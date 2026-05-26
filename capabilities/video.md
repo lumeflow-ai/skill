@@ -26,6 +26,7 @@
 | Seedance 2.0 Fast | `76` | Audio forced on |
 | Pixverse C1 | `88` | **Default**. duration 2-15s |
 | Wan 2.7 | `89` | duration 2-15s, audio forced on |
+| HappyHorseV1.0 | `104` | duration 2-15s, supports text-to-video and image-to-video |
 
 
 
@@ -67,6 +68,7 @@ Video duration must be selected from the current model's supported values. Do no
 | Seedance 2.0 / 2.0 Fast | `73`, `76` | `5`, `10`, `15` |
 | Pixverse C1 | `88` | `2`-`15` |
 | Wan 2.7 | `89` | `2`-`15` |
+| HappyHorseV1.0 | `104` | `2`-`15` |
 
 For any video model not listed above, do not guess a duration. Check [references/ai_models_analysis.md](references/ai_models_analysis.md) first before quoting price or sending the request.
 

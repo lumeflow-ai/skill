@@ -105,6 +105,7 @@ VIDEO_DURATION_RULES = {
     73: {'model_name': 'Seedance 2.0', 'type': 'values', 'values': [5, 10, 15]},
     88: {'model_name': 'Pixverse C1', 'type': 'range', 'min': 2, 'max': 15},
     89: {'model_name': 'Wan 2.7', 'type': 'range', 'min': 2, 'max': 15},
+    104: {'model_name': 'HappyHorseV1.0', 'type': 'range', 'min': 2, 'max': 15},
 }
 UNDOCUMENTED_VIDEO_DURATION_MODELS = {
     6: 'Vidu Q1',

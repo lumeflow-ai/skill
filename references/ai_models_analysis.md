@@ -44,6 +44,7 @@
 | Seedance 2.0 Fast | `76` | V2.0 fast |
 | Pixverse C1 | `88` | C1 |
 | Wan 2.7 | `89` | V2.7 |
+| HappyHorseV1.0 | `104` | V1.0 |
 
 > **Note**: `generate_type` values: `0` = text-to-video, `1` = image-to-video, `3` = video-to-video (not supported by this skill)
 
@@ -285,7 +286,8 @@ export type VideoModelType =
   | 73  // Seedance 2.0
   | 76  // Seedance 2.0 Fast
   | 88  // Pixverse C1
-  | 89; // Wan 2.7
+  | 89  // Wan 2.7
+  | 104; // HappyHorseV1.0
 
 /** Image generation model IDs */
 export type ImageModelType =
