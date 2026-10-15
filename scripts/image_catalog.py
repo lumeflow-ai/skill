@@ -5,7 +5,7 @@ from model_catalog import integer
 IMAGE_SOURCE = 'https://www.lumeflow.ai/app/_nuxt/DVQTaBJ-.js'
 IMAGE_CHECKED = '2026-09-30'
 IMAGE_IDS = {
-    'nanobanana': 18, 'nanobanana2': 72, 'nanobananaPro': 37,
+    'nanobanana': 18, 'nanobanana2': 72, 'nanobanana21': 179, 'nanobananaPro': 37,
     'seedream4.0': 12, 'seedream5.0': 80, 'seedream5Pro': 165,
     'klingO1': 38,
     'gptImage2': 101, 'gptImage25': 174,
@@ -27,6 +27,8 @@ IMAGE_PROFILES = {
                 text_ratios=WIDE),
     72: profile('nanobanana2', 'Nano Banana V2', 'Ce', ['1K', '2K', '4K'],
                 [5000, 5000], 14, ['auto'] + RATIOS + ['5:4', '4:5'], 'auto'),
+    179: profile('nanobanana21', 'Nano Banana 2.1', 'ke', ['1K', '2K', '4K'],
+                 [5000, 5000], 14, ['auto'] + RATIOS + ['5:4', '4:5'], 'auto'),
     37: profile('nanobananaPro', 'Nano Banana Pro', 'Ce', ['1K', '2K', '4K'],
                 [1500, 2000], 5, text_resolutions=['2K', '4K']),
     12: profile('seedream4.0', 'Seedream 4.0', 'Re', ['1K', '2K', '4K'],
@@ -51,7 +53,7 @@ def resolve_image_model(value):
         names = {key.casefold(): model for key, model in IMAGE_IDS.items()}
         names.update({p['name'].casefold(): model for model, p in IMAGE_PROFILES.items()})
         names.update({p['key'].casefold(): model for model, p in IMAGE_PROFILES.items()})
-        names.update({'nano banana': 18, 'nano banana 2': 72, 'seedream 5.0': 80,
+        names.update({'nano banana': 18, 'nano banana 2': 72, 'nano banana v2.1': 179, 'seedream 5.0': 80,
                       'gpt image 2.5': 174, 'gptimage25flare': 174, 'kling o1': 38})
         if value.strip().casefold() in names:
             return names[value.strip().casefold()]

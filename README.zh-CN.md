@@ -70,7 +70,7 @@ Current catalog: [33 supported video models and parameter rules](references/vide
 
 | 模型 | 版本 | 分辨率 |
 |------|------|--------|
-| Nano Banana | V1 / V2 / Pro | V1: omitted; V2/Pro: 1K / 2K / 4K by mode |
+| Nano Banana | V1 / V2 / V2.1 (179) / Pro | V1: omitted; V2/V2.1/Pro: 1K / 2K / 4K by mode |
 | Seedream | 4.0 / 5.0 Lite / 5.0 Pro | 4.0: 1K/2K/4K; Lite: 2K/3K; Pro: 1K/2K |
 | Kling O1 Image | Image-to-image (38) | 1K / 2K |
 | GPT Image | 2 / 2.5 Flare / 2.5 Sunburst | 1K / 2K / 4K; selectable quality |

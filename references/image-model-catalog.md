@@ -2,6 +2,8 @@
 
 Verified 2026-09-30 against [DVQTaBJ-.js](https://www.lumeflow.ai/app/_nuxt/DVQTaBJ-.js), [text page](https://www.lumeflow.ai/app/_nuxt/Cbk-dWxW.js), [image page](https://www.lumeflow.ai/app/_nuxt/DIFnJwfA.js) and [upload component](https://www.lumeflow.ai/app/_nuxt/CZbNhc0R.js). Rules implement frontend compatibility; live backend availability has not been tested. Executable rules: [image_catalog.py](../scripts/image_catalog.py).
 
+Nano Banana 2.1 (179) additionally verified 2026-10-15 against [CCTOSB7-.js](https://www.lumeflow.ai/app/_nuxt/CCTOSB7-.js), [text adapter](https://www.lumeflow.ai/app/_nuxt/a4od2REh.js) and [image adapter](https://www.lumeflow.ai/app/_nuxt/-agr4h8B.js). It shares the Banana V2 parameter components. `nanobanana21`, `Nano Banana 2.1` and `Nano Banana V2.1` resolve to 179; API requests do not include the frontend version field.
+
 ## Model IDs and constraints
 
 Text mode = generate_type=3; image mode = 4. Outputs are integers 1-4. Prompt limits below are text/image characters; prompts are rejected if too long, never truncated. Reference counts apply to images[] in image mode.
@@ -10,6 +12,7 @@ Text mode = generate_type=3; image mode = 4. Outputs are integers 1-4. Prompt li
 |---|---:|---|---|---|---|---|
 | nanobanana | 18 | Ce | omitted | 1500 / 2000 | 1-5 | text / image |
 | nanobanana2 | 72 | Ce | 1K, 2K, 4K | 5000 / 5000 | 1-14 | text / image |
+| nanobanana21 | 179 | ke | 1K, 2K, 4K | 5000 / 5000 | 1-14 | text / image |
 | nanobananaPro | 37 | Ce | text: 2K, 4K; image: 1K, 2K, 4K | 1500 / 2000 | 1-5 | text / image |
 | seedream4.0 | 12 | Re | 1K, 2K, 4K | 600 / 600 | 1-10 | text / image |
 | seedream5.0 | 80 | Re | 2K, 3K | 2000 / 2000 | 1-14 | text / image |
@@ -27,7 +30,7 @@ Kling O1 is excluded from the current text page selector and has no text price t
 
 - Common seven ratios: 1:1, 4:3, 3:4, 16:9, 9:16, 3:2, 2:3. Banana Pro uses these; default 1:1.
 - Banana V1 uses the common seven in image mode; text also allows 21:9. Default 1:1; omit resolution entirely.
-- Banana V2 adds auto, 5:4 and 4:5; default auto/1K. The frontend's 4:5 option has an inconsistent label/value of 5:4; use the intended ratio key 4:5 instead of silently converting it.
+- Banana V2 and V2.1 add auto, 5:4 and 4:5; default auto/1K. The frontend's 4:5 option has an inconsistent label/value of 5:4; use the intended ratio key 4:5 instead of silently converting it.
 - Seedream 4.0 has no ratio selector and sends ratio="". Default 1K. Its shared class sends is_web_search=0; web search is not selectable.
 - Seedream 5.0 Lite/Pro and Kling O1 add 21:9. Seedream defaults 16:9 (Lite=2K, Pro=1K); Kling defaults 1:1/1K.
 - GPT Image 2 adds 21:9 and 9:21, but no auto. Default 16:9/1K.

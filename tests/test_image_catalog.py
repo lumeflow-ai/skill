@@ -33,7 +33,7 @@ class ImageCompatibility(unittest.TestCase):
             balance.assert_not_called()
 
     def test_ids_and_image_video_namespaces(self):
-        self.assertEqual(IMAGE_IDS, {'nanobanana': 18, 'nanobanana2': 72,
+        self.assertEqual(IMAGE_IDS, {'nanobanana': 18, 'nanobanana2': 72, 'nanobanana21': 179,
             'nanobananaPro': 37, 'seedream4.0': 12, 'seedream5.0': 80,
             'seedream5Pro': 165, 'klingO1': 38, 'gptImage2': 101, 'gptImage25': 174})
         for key, model in IMAGE_IDS.items():
@@ -63,6 +63,49 @@ class ImageCompatibility(unittest.TestCase):
                         self.assertEqual(priced.pop('route'), '/api/lumeflow/image-generate')
                         generate.action_generate('image-generate', body)
                         self.assertEqual(priced, http.call_args.kwargs['body'])
+
+    def test_nanobanana21_defaults_aliases_and_cli(self):
+        for value in (179, '179', 'nanobanana21', 'Nano Banana 2.1', 'Nano Banana V2.1'):
+            self.assertEqual(resolve_image_model(value), 179)
+            body = normalize_image_request(dict(model_type=value, prompt='Prompt'))
+            self.assertEqual(body, dict(model_type=179, prompt='Prompt', generate_type=3,
+                                        outputs=1, ratio='auto', resolution='1K'))
+        out = io.StringIO()
+        with patch.object(sys, 'argv', ['generate.py', '--action', 'image-models', '--model', 'nanobanana21']), contextlib.redirect_stdout(out), patch.object(generate, 'http_request') as http, patch.object(generate, 'ensure_runtime_config') as config:
+            generate.main()
+            http.assert_not_called()
+            config.assert_not_called()
+        self.assertEqual(json.loads(out.getvalue())['models'][0]['model_type'], 179)
+        with patch('os.path.isfile', return_value=True), patch('os.path.getsize', return_value=10 * 1024 * 1024):
+            generate.validate_upload_image('test.png', model='nanobanana21', model_kind='image')
+        with patch('os.path.isfile', return_value=True), patch('os.path.getsize', return_value=10 * 1024 * 1024 + 1):
+            with self.assertRaises(ValueError):
+                generate.validate_upload_image('test.png', model=179, model_kind='image')
+
+    def test_nanobanana21_parameters_and_invalid_requests(self):
+        for mode in (3, 4):
+            body = dict(model_type=179, prompt='x' * 5000, generate_type=mode, outputs=4)
+            if mode == 4:
+                body['images'] = ['url'] * 14
+            for resolution in ('1K', '2K', '4K'):
+                for ratio in ('auto', '1:1', '4:3', '3:4', '16:9', '9:16', '3:2', '2:3', '5:4', '4:5'):
+                    result = normalize_image_request(dict(body, resolution=resolution, ratio=ratio))
+                    self.assertEqual(result['ratio'], ratio)
+                    self.assertEqual(result['resolution'], resolution)
+            for changes in (dict(prompt='x' * 5001), dict(resolution='8K'),
+                            dict(ratio='21:9'), dict(outputs=0), dict(outputs=5),
+                            dict(images=[] if mode == 4 else ['url']),
+                            dict(images=['url'] * 15), dict(generate_type=1)):
+                invalid = {**body, **changes}
+                with self.subTest(mode=mode, changes=list(changes)), patch.object(generate, 'http_request') as http, patch.object(generate, 'action_balance') as balance:
+                    for call in [lambda: generate.action_price('/api/lumeflow/image-generate', invalid),
+                                 lambda: generate.action_generate('image-generate', invalid),
+                                 lambda: generate.action_generate_with_balance('image-generate', invalid),
+                                 lambda: generate.action_watch('image', invalid)]:
+                        with self.assertRaises(ValueError):
+                            call()
+                    http.assert_not_called()
+                    balance.assert_not_called()
 
     def test_model_specific_resolution_and_omitted_fields(self):
         def norm(model, **kw):

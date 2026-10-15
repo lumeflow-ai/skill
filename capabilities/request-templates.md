@@ -94,6 +94,12 @@ For Q1 image mode use generate_type=1 and image; omit ratio and style. moition_r
 {"generate_type":3,"model_type":80,"prompt":"{prompt}","ratio":"16:9","resolution":"2K","is_web_search":1,"outputs":1}
 ```
 
+**Nano Banana 2.1 text-to-image / image-to-image** (179):
+```json
+{"generate_type":3,"model_type":179,"prompt":"{prompt}","ratio":"auto","resolution":"1K","outputs":1}
+```
+For image-to-image, set generate_type=4 and add images[] with 1-14 uploaded image URLs. Both modes accept 5000-character prompts and 1K/2K/4K. Ratios follow Banana V2; preserve the intended 4:5 key despite the website option's incorrect value. Do not send version or moition_range.
+
 **Kling O1 image-to-image** (image ID 38):
 ```json
 {"generate_type":4,"model_type":38,"prompt":"{prompt}","ratio":"1:1","resolution":"1K","outputs":1,"images":["{image_url}"]}

@@ -56,7 +56,7 @@ Image modes: generate_type=3 (text), 4 (images[]). Kling O1 Image (38) is image-
 export type VideoModelType = 1 | 7 | 19 | 21 | 9 | 41 | 3 | 4 | 5 | 6 | 11 | 15 | 27 | 26 | 28 | 91 | 65 | 73 | 71 | 86 | 87 | 92 | 23 | 25 | 63 | 24 | 64 | 89 | 50 | 88 | 151 | 104 | 95 | 168 | 150 | 112 | 166;
 
 /** Image generation model IDs */
-export type ImageModelType = 18 | 72 | 37 | 12 | 80 | 165 | 38 | 101 | 174 | 175;
+export type ImageModelType = 18 | 72 | 179 | 37 | 12 | 80 | 165 | 38 | 101 | 174 | 175;
 
 /** Video modes supported by this Skill */
 export type VideoGenerateType = 0 | 1;
