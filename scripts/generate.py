@@ -46,6 +46,10 @@ import urllib.request
 import urllib.error
 
 from product_config import resolve_runtime_config
+from model_catalog import (MODEL_PROFILES, MODEL_IDS, MODEL_ALIASES,
+                           normalize_video_request, resolve_model_type, list_models)
+from image_catalog import (IMAGE_PROFILES, normalize_image_request,
+                           resolve_image_model, list_image_models)
 
 RUNTIME_CONFIG = resolve_runtime_config()
 BASE_URL = RUNTIME_CONFIG.get('LUMEFLOW_BASE_URL')
@@ -85,48 +89,20 @@ LOG_FILE_PATH = os.path.join(SKILL_ROOT_DIR, 'lumeflow_http.log')
 SENSITIVE_HEADER_KEYS = {'api-key'}
 SENSITIVE_QUERY_KEYS = {'sign'}
 VIDEO_DURATION_RULES = {
-    1: {'model_name': 'Kling 1.6', 'type': 'values', 'values': [5, 10]},
-    7: {'model_name': 'Kling 2.0', 'type': 'values', 'values': [5, 10]},
-    19: {'model_name': 'Kling 2.5', 'type': 'values', 'values': [5, 10]},
-    29: {'model_name': 'Kling 2.6', 'type': 'values', 'values': [5, 10]},
-    30: {'model_name': 'Kling O1', 'type': 'values', 'values': [5, 10]},
-    65: {'model_name': 'Kling 3.0', 'type': 'range', 'min': 1, 'max': 15},
-    9: {'model_name': 'model_type 9 (Lumeflow 3.0 or Pixverse V5)', 'type': 'values', 'values': [5, 8]},
-    41: {'model_name': 'Pixverse V4.5', 'type': 'values', 'values': [5, 8]},
-    28: {'model_name': 'Pixverse V5.5', 'type': 'values', 'values': [5, 8, 10]},
-    3: {'model_name': 'Hailuo 02', 'type': 'values', 'values': [6, 10]},
-    23: {'model_name': 'Hailuo 2.3', 'type': 'values', 'values': [6, 10]},
-    25: {'model_name': 'Hailuo 2.3 Fast', 'type': 'values', 'values': [6, 10]},
-    4: {'model_name': 'Google Veo 3.1', 'type': 'values', 'values': [8]},
-    5: {'model_name': 'Google Veo 3.1 Fast', 'type': 'values', 'values': [8]},
-    63: {'model_name': 'Wan 2.5', 'type': 'values', 'values': [5, 10]},
-    64: {'model_name': 'Wan 2.6', 'type': 'range', 'min': 2, 'max': 15},
-    76: {'model_name': 'Seedance 2.0 Fast', 'type': 'values', 'values': [5, 10, 15]},
-    73: {'model_name': 'Seedance 2.0', 'type': 'values', 'values': [5, 10, 15]},
-    88: {'model_name': 'Pixverse C1', 'type': 'range', 'min': 2, 'max': 15},
-    89: {'model_name': 'Wan 2.7', 'type': 'range', 'min': 2, 'max': 15},
-    104: {'model_name': 'HappyHorseV1.0', 'type': 'range', 'min': 2, 'max': 15},
+    model: {'model_name': p['name'], 'type': 'values', 'values': p['durations']}
+    for model, p in MODEL_PROFILES.items() if p['durations'] is not None
 }
-UNDOCUMENTED_VIDEO_DURATION_MODELS = {
-    6: 'Vidu Q1',
-    24: 'Vidu Q2 Turbo',
-    26: 'Vidu Q2',
-    50: 'Seedance 1.5 Pro',
-}
-
-# model_type -> duration (seconds) -> allowed resolution strings (exact API casing)
-_HAILUO_RESOLUTION_BY_DURATION = {
-    6: ['768P', '1080P'],
-    10: ['768P'],
-}
+# Keep numeric legacy IDs accepted without inventing a website remapping.
+VIDEO_DURATION_RULES.update({
+    29: {'model_name': 'Kling 2.6 (legacy ID)', 'type': 'values', 'values': [5, 10]},
+    30: {'model_name': 'Kling O1 (legacy ID)', 'type': 'values', 'values': [5, 10]},
+})
+UNDOCUMENTED_VIDEO_DURATION_MODELS = {}
 VIDEO_RESOLUTION_BY_DURATION = {
-    9: {
-        5: ['360P', '540P', '720P', '1080P'],
-        8: ['360P', '540P', '720P'],
-    },
-    3: _HAILUO_RESOLUTION_BY_DURATION,
-    23: _HAILUO_RESOLUTION_BY_DURATION,
-    25: _HAILUO_RESOLUTION_BY_DURATION,
+    model: p['resolutions'] if isinstance(p['resolutions'], dict) else
+        {seconds: p['resolutions'] for seconds in p['durations']}
+    for model, p in MODEL_PROFILES.items()
+    if p['resolutions'] is not None and p['durations'] is not None
 }
 
 
@@ -299,7 +275,7 @@ def resolve_media_path(file_path):
     return file_path  # return original if not found (will fail validation)
 
 
-def validate_upload_image(file_path):
+def validate_upload_image(file_path, model=None, function_mode=0, model_kind='video'):
     """Validate upload image path, type and size."""
     if not file_path:
         raise ValueError('No --file provided for image upload')
@@ -309,16 +285,29 @@ def validate_upload_image(file_path):
     if not os.path.isfile(file_path):
         raise FileNotFoundError(f'File not found: {file_path}')
 
+    resolver = resolve_image_model if model_kind == 'image' else resolve_model_type
+    catalog = IMAGE_PROFILES if model_kind == 'image' else MODEL_PROFILES
+    target = resolver(model) if model not in (None, '') else None
+    if target is not None and target not in catalog:
+        raise ValueError('Image upload model is not in the website catalog')
+    extensions = dict(SUPPORTED_IMAGE_EXTENSIONS)
+    max_bytes = MAX_UPLOAD_IMAGE_BYTES
+    if model_kind == 'image' and target is not None:
+        max_bytes = IMAGE_PROFILES[target].get('upload_mib', 10) * 1024 * 1024
+    elif target == 166 or (target == 168 and function_mode == 1):
+        max_bytes = 30 * 1024 * 1024
+    if model_kind == 'video' and target == 166:
+        extensions.update({'.heic': 'image/heic', '.heif': 'image/heif'})
     ext = os.path.splitext(file_path)[1].lower()
-    if ext not in SUPPORTED_IMAGE_EXTENSIONS:
-        supported = ', '.join(ext.lstrip('.') for ext in sorted(SUPPORTED_IMAGE_EXTENSIONS))
+    if ext not in extensions:
+        supported = ', '.join(ext.lstrip('.') for ext in sorted(extensions))
         raise ValueError(f'Unsupported image format: {ext or "(none)"}. Supported formats: {supported}')
 
     file_size = os.path.getsize(file_path)
-    if file_size > MAX_UPLOAD_IMAGE_BYTES:
-        raise ValueError(f'File size exceeds 10MB limit: {file_size} bytes')
+    if file_size > max_bytes:
+        raise ValueError(f'File size exceeds {max_bytes // (1024 * 1024)}MiB limit: {file_size} bytes')
 
-    return SUPPORTED_IMAGE_EXTENSIONS[ext]
+    return extensions[ext]
 
 
 def validate_upload_audio(file_path):
@@ -469,8 +458,8 @@ def validate_video_duration(body_dict):
     if model_type_raw in (None, ''):
         return body_dict
 
-    model_type = parse_int_field(model_type_raw, 'model_type')
-    body_dict['model_type'] = model_type
+    body_dict = normalize_video_request(body_dict)
+    model_type = body_dict['model_type']
 
     undocumented_model_name = UNDOCUMENTED_VIDEO_DURATION_MODELS.get(model_type)
     if undocumented_model_name:
@@ -518,7 +507,7 @@ def validate_video_resolution(body_dict):
     if model_type_raw in (None, ''):
         return body_dict
 
-    model_type = parse_int_field(model_type_raw, 'model_type')
+    model_type = resolve_model_type(model_type_raw)
     by_duration = VIDEO_RESOLUTION_BY_DURATION.get(model_type)
     if not by_duration:
         return body_dict
@@ -647,6 +636,8 @@ def action_generate(endpoint, body_dict):
     if endpoint == 'video-generate':
         body_dict = validate_video_duration(dict(body_dict))
         body_dict = validate_video_resolution(body_dict)
+    elif endpoint == 'image-generate':
+        body_dict = normalize_image_request(body_dict)
     timestamp, sign = generate_sign(body_dict)
     url = f'{BASE_URL}/api/lumeflow/{endpoint}?timestamp={timestamp}&sign={sign}'
     return http_request(url, method='POST', body=body_dict)
@@ -662,6 +653,8 @@ def action_price(route, body_dict):
     if route == '/api/lumeflow/video-generate':
         body_dict = validate_video_duration(dict(body_dict))
         body_dict = validate_video_resolution(body_dict)
+    elif route == '/api/lumeflow/image-generate':
+        body_dict = normalize_image_request(body_dict)
     price_body = dict(body_dict)
     price_body['route'] = route
     timestamp, sign = generate_sign(price_body)
@@ -684,18 +677,20 @@ def action_query(endpoint, ids):
 
 
 def action_watch(task_type: str, body_dict: dict,
-                 poll_interval: int = 8, poll_timeout: int = 100) -> dict:
+                 poll_interval: int = 8, poll_timeout: int = 600,
+                 debug: bool = False) -> dict:
     """Submit a generation task, persist it locally, then poll in foreground until complete.
 
-    NOTE: Default poll_timeout=100s is intentionally short to fit within OpenClaw exec
-    tool's 120-second hard limit. If the task isn't done in time, the script returns
-    status='processing' and the caller should re-query with --action image-query / video-query.
+    Default timeout matches the CLI (600s). For tools with a hard execution limit,
+    set a shorter timeout explicitly and re-query the existing IDs after timeout.
+    Poll diagnostics are opt-in; HTTP details remain in the local HTTP log.
 
     Args:
         task_type:     'video' | 'image'
         body_dict:     request body dict
         poll_interval: seconds between each poll (default 8s)
-        poll_timeout:  max wait seconds before giving up (default 100s)
+        poll_timeout:  max wait seconds before giving up (default 600s)
+        debug:        include poll diagnostics and full stored task/raw response
 
     Returns the final task dict (with result_urls populated on success).
     """
@@ -703,9 +698,31 @@ def action_watch(task_type: str, body_dict: dict,
 
     endpoint = f'{task_type}-generate'
     query_endpoint = f'{task_type}-task-list'
+    if task_type == 'video':
+        body_dict = validate_video_resolution(validate_video_duration(dict(body_dict)))
+    elif task_type == 'image':
+        body_dict = normalize_image_request(body_dict)
+
+    def debug_print(*args, **kwargs):
+        if debug:
+            print(*args, **kwargs)
+
+    def watch_result(task):
+        if debug:
+            return task
+        # Keep the complete request in the task store, not in the agent context.
+        fields = ('local_id', 'task_ids', 'type', 'status', 'result_urls',
+                  'result_urls_watermark', 'result_cover_urls', 'integral_used',
+                  'integral_remaining', 'error', 'error_code')
+        result = {key: task[key] for key in fields if key in task}
+        # Preserve recovery data only when a completed task has no extracted URL.
+        if task.get('status') == 'completed' and not (
+                task.get('result_urls') or task.get('result_urls_watermark')):
+            result['raw_query_response'] = task.get('raw_query_response')
+        return result
 
     # 1. Submit generation request (includes balance snapshot)
-    print(json.dumps({'status': 'submitting', 'type': task_type}, ensure_ascii=False), file=sys.stderr)
+    debug_print(json.dumps({'status': 'submitting', 'type': task_type}, ensure_ascii=False), file=sys.stderr)
     gen_result = action_generate_with_balance(endpoint, body_dict)
 
     if gen_result.get('error') or gen_result.get('code', 200) != 200:
@@ -728,7 +745,7 @@ def action_watch(task_type: str, body_dict: dict,
     )
     local_id = task['local_id']
 
-    print(json.dumps({
+    debug_print(json.dumps({
         'status':      'submitted',
         'type':        task_type,
         'local_id':    local_id,
@@ -737,7 +754,7 @@ def action_watch(task_type: str, body_dict: dict,
         'integral_remaining': integral_remaining,
         'store_path':  task_store.dump_store_path(),
     }, ensure_ascii=False, indent=2), file=sys.stderr)
-    print(f'  ⏳ Polling every {poll_interval}s (max {poll_timeout}s)...', file=sys.stderr)
+    debug_print(f'  ⏳ Polling every {poll_interval}s (max {poll_timeout}s)...', file=sys.stderr)
 
     # 3. Poll until complete or timeout
     ids_str = ','.join(str(i) for i in task_ids)
@@ -781,13 +798,13 @@ def action_watch(task_type: str, body_dict: dict,
         query_result = action_query(query_endpoint, ids_str)
         last_raw_query = query_result  # save for fallback
 
-        # Always print raw response for debugging (stderr, not stdout)
-        print(f'  [poll {elapsed}s] raw response: '
+        # Raw poll responses are emitted only in debug mode.
+        debug_print(f'  [poll {elapsed}s] raw response: '
               + json.dumps(query_result, ensure_ascii=False),
               file=sys.stderr)
 
         if not isinstance(query_result, dict):
-            print(f'  ⚠️  Unexpected response type: {type(query_result)}, retrying...',
+            debug_print(f'  ⚠️  Unexpected response type: {type(query_result)}, retrying...',
                   file=sys.stderr)
             continue
 
@@ -797,11 +814,11 @@ def action_watch(task_type: str, body_dict: dict,
         if isinstance(items, dict):
             items = [items]
         elif not isinstance(items, list):
-            print(f'  ⚠️  data field is not a list: {type(items)}, retrying...', file=sys.stderr)
+            debug_print(f'  ⚠️  data field is not a list: {type(items)}, retrying...', file=sys.stderr)
             continue
 
         if not items:
-            print(f'  ⚠️  Empty data list, retrying...', file=sys.stderr)
+            debug_print(f'  ⚠️  Empty data list, retrying...', file=sys.stderr)
             continue
 
         # Deduplicate items by task ID to avoid duplicate output
@@ -811,7 +828,7 @@ def action_watch(task_type: str, body_dict: dict,
             if isinstance(_item, dict):
                 _tid = _item.get('id') or _item.get('task_id')
                 if _tid is not None and _tid in seen_ids:
-                    print(f'  ⏭️  Skipping duplicate item id={_tid}', file=sys.stderr)
+                    debug_print(f'  ⏭️  Skipping duplicate item id={_tid}', file=sys.stderr)
                     continue
                 if _tid is not None:
                     seen_ids.add(_tid)
@@ -843,7 +860,7 @@ def action_watch(task_type: str, body_dict: dict,
             is_int_status = isinstance(raw_status_val, int)
             raw_status = str(raw_status_val).lower().strip()
 
-            print(f'  [item status] id={item.get("id", "?")} status={raw_status_val!r} (int={is_int_status})',
+            debug_print(f'  [item status] id={item.get("id", "?")} status={raw_status_val!r} (int={is_int_status})',
                   file=sys.stderr)
 
             # Determine done/fail/pending using both int sets and string sets
@@ -971,10 +988,10 @@ def action_watch(task_type: str, body_dict: dict,
             else:
                 # Unknown status — be conservative, keep polling
                 all_done = False
-                print(f'  ⚠️  Unknown status {raw_status_val!r}, keep polling', file=sys.stderr)
+                debug_print(f'  ⚠️  Unknown status {raw_status_val!r}, keep polling', file=sys.stderr)
 
         # Summarise this round
-        print(f'  → all_done={all_done} any_failed={any_failed} urls={result_urls}',
+        debug_print(f'  → all_done={all_done} any_failed={any_failed} urls={result_urls}',
               file=sys.stderr)
 
         if any_failed and not result_urls:
@@ -987,7 +1004,7 @@ def action_watch(task_type: str, body_dict: dict,
             final['type'] = task_type
             final['error_code'] = failed_error_code
             final['raw_query_response'] = last_raw_query
-            return final
+            return watch_result(final)
 
         if all_done and not any_failed:
             task_store.update_task(local_id, status='completed', result_urls=result_urls,
@@ -996,8 +1013,8 @@ def action_watch(task_type: str, body_dict: dict,
             final = task_store.get_task(local_id)
             final['type'] = task_type
             final['raw_query_response'] = last_raw_query  # Agent can parse this if result_urls is empty
-            print(f'  ✅ Completed! {len(result_urls)} result(s) found.', file=sys.stderr)
-            return final
+            debug_print(f'  ✅ Completed! {len(result_urls)} result(s) found.', file=sys.stderr)
+            return watch_result(final)
 
     # Client-side timeout
     task_store.update_task(local_id, status='processing',
@@ -1005,7 +1022,7 @@ def action_watch(task_type: str, body_dict: dict,
     final = task_store.get_task(local_id)
     final['type'] = task_type
     final['raw_query_response'] = last_raw_query  # last poll response — Agent can extract URL from here
-    return final
+    return watch_result(final)
 
 
 
@@ -1023,6 +1040,10 @@ def action_generate_with_balance(endpoint, body_dict):
     (image-generate -> 'image', video-generate -> 'video') so downstream
     consumers never need to infer the generation type from body/action/memory.
     """
+    if endpoint == 'video-generate':
+        body_dict = validate_video_resolution(validate_video_duration(dict(body_dict)))
+    elif endpoint == 'image-generate':
+        body_dict = normalize_image_request(body_dict)
     balance_before = action_balance()
     generation_result = action_generate(endpoint, body_dict)
     balance_after = action_balance()
@@ -1034,11 +1055,14 @@ def action_generate_with_balance(endpoint, body_dict):
     return output
 
 
-def action_upload_image(file_path):
+def action_upload_image(file_path, model=None, function_mode=0, model_kind='video'):
     """Upload a local image file and return the remote URL."""
     timestamp, sign = generate_sign()
     url = f'{BASE_URL}/api/lumeflow/claw-upload-image?timestamp={timestamp}&sign={sign}'
-    body, content_type = build_multipart_form_data(file_path)
+    file_path = resolve_media_path(file_path)
+    mime_type = validate_upload_image(file_path, model=model, function_mode=function_mode,
+                                     model_kind=model_kind)
+    body, content_type = build_multipart_form_data(file_path, mime_type=mime_type)
     return http_request(url, method='POST', raw_body=body, content_type=content_type)
 
 
@@ -1091,9 +1115,16 @@ def main():
                             'watch-video', 'watch-image',   # submit + continuous poll
                             'video-query', 'image-query',
                             'tasks',                        # list local task history
+                            'models',                       # local website model catalog
+                            'image-models',                 # local image model catalog
                             'upload-image', 'upload-video', 'upload-audio', 'balance',
                         ],
                         help='Action to perform')
+    parser.add_argument('--model', default='', help='Model name/ID filter for models or image upload context')
+    parser.add_argument('--model-kind', choices=['video', 'image'], default='video',
+                        help='Model catalog for image upload context (default: video)')
+    parser.add_argument('--function-mode', type=int, choices=[0, 1], default=0,
+                        help='Reference mode for model-aware image upload (0=frames, 1=Omni)')
     parser.add_argument('--body', default='', help='JSON body string')
     parser.add_argument('--body-file', default='', help='Path to JSON body file (UTF-8)')
     parser.add_argument('--ids', default='', help='Task IDs for query (comma-separated)')
@@ -1103,6 +1134,8 @@ def main():
                         help='Seconds between polls for watch actions (default: 8)')
     parser.add_argument('--poll-timeout', type=int, default=600,
                         help='Max seconds to wait in watch mode (default: 600)')
+    parser.add_argument('--debug', action='store_true',
+                        help='Include watch poll diagnostics and full task/raw response')
     parser.add_argument('--status', default='',
                         help='Filter tasks by status for --action tasks')
     parser.add_argument('--limit', type=int, default=20,
@@ -1128,7 +1161,16 @@ def main():
 
     result = None
     try:
-        if args.action == 'video-price':
+        if args.action in ('models', 'image-models'):
+            is_image = args.action == 'image-models'
+            result = list_image_models() if is_image else list_models()
+            if args.model:
+                selected = resolve_image_model(args.model) if is_image else resolve_model_type(args.model)
+                result['models'] = [p for p in result['models'] if p['model_type'] == selected]
+                if not result['models']:
+                    raise ValueError('Model is not in the current website catalog')
+
+        elif args.action == 'video-price':
             if not body_dict:
                 print(json.dumps({'error': 'No body provided for video price query'}, ensure_ascii=False))
                 sys.exit(1)
@@ -1158,7 +1200,7 @@ def main():
                 sys.exit(1)
             result = action_watch('video', body_dict,
                                   poll_interval=args.poll_interval,
-                                  poll_timeout=args.poll_timeout)
+                                  poll_timeout=args.poll_timeout, debug=args.debug)
 
         elif args.action == 'watch-image':
             if not body_dict:
@@ -1166,7 +1208,7 @@ def main():
                 sys.exit(1)
             result = action_watch('image', body_dict,
                                   poll_interval=args.poll_interval,
-                                  poll_timeout=args.poll_timeout)
+                                  poll_timeout=args.poll_timeout, debug=args.debug)
 
         elif args.action == 'video-query':
             if not args.ids:
@@ -1193,7 +1235,8 @@ def main():
             }
 
         elif args.action == 'upload-image':
-            result = action_upload_image(args.file)
+            result = action_upload_image(args.file, model=args.model, function_mode=args.function_mode,
+                                         model_kind=args.model_kind)
 
         elif args.action == 'upload-video':
             result = action_upload_video(args.file)

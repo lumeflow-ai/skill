@@ -1,43 +1,21 @@
-# Output Format and Interaction Rules
+# User-facing Output
 
-## Output Format
-All output MUST be strictly formatted in valid Markdown. Use proper headings, tables, lists, and inline formatting. Never output raw unformatted text.
+Use Markdown and the language of the user's latest message. Generation messages should be concise and readable; do not expose scripts, environment variables, JSON, API keys or error stacks.
 
-### Presenting Results to the User
+## Quote
 
-When generation completes **or when viewing task history**, present the result in a **friendly, human-readable** format. Include:
+Show one parameter summary with estimated time and quoted credit cost; see [parameter-flow.md](parameter-flow.md). Do not repeat unchanged tables at later steps.
 
-- **Task ID**: mention it naturally (e.g. "Your task ID is 22222.")
-- **Status**: use friendly language (e.g. "completed", "processing", "failed")
-- **Do NOT embed image preview** — no `![preview](...)`, no cover image. Only show download links.
-- **Download buttons** — use markdown `[text](url)` syntax, one button per URL in `result_urls`. **Labels MUST adapt to user's language** (Chinese: `[下载视频资源]`/`[下载图片资源]`, English: `[Download Video]`/`[Download Image]`, etc.).
-  - Never show watermark/no-watermark distinction. Never show `result_urls_watermark`.
-- **Credits**: show remaining balance in natural language (e.g. "You have 3,944 credits remaining.")
+## Results and history
 
-Do NOT output machine-readable JSON blocks, raw code blocks with structured data, or any format that looks like internal system data.
+Show task ID, friendly status, one localized Markdown download link per unique URL in `result_urls`, and remaining credits when available. Do not embed previews or show `result_urls_watermark` or watermark distinctions. If only watermark URLs exist, recover a primary download URL using the query fallback in [result-handling.md](result-handling.md); never claim a usable primary URL exists if none is returned.
 
-### Presenting Price Estimates
+Example:
 
-When showing price before confirmation, present it as part of the parameter summary table or as a simple line:
+任务 ID：27502 · 已完成
+[下载图片资源](https://example.com/result.jpeg)
+剩余积分：209
 
-> Estimated cost: 200 credits
+## Failures
 
-Do NOT output raw JSON price blocks.
-
-## Interaction Guidelines
-These rules are mandatory for all agent responses.
-
-- **No technical jargon**: Do NOT mention terminal, script names, JSON config, environment variables, or error stacks. Use friendly, human-readable responses (e.g. “I'll generate that for you! It should take a few minutes.”).
-- **Mandatory time/cost estimate**: Before generation confirmation, always show the estimated time (e.g. video: 5-10 min; image: ~1 min) and estimated credit cost.
-- **Gentle error handling**: On task failure, do NOT expose raw server errors. Look up `error_code` in [references/api_reference.md](../references/api_reference.md) “Task Failure Error Codes” table and output the translated message. If no matching code, use: “Sorry, the generation failed. Would you like to try again with different parameters?”
-- **Language adaptation (MANDATORY)**: **All** agent output (parameter tables, time estimates, error messages, status updates, download button labels, confirmations, etc.) **MUST** match the language of the user's **latest message**. Specific rules:
-  - User writes in Chinese → all output in Chinese (e.g. `下载图片资源`, `下载视频资源`, `已完成`, `剩余积分`)
-  - User writes in English → all output in English (e.g. `Download Image`, `Download Video`, `Completed`, `Credits remaining`)
-  - User writes in Japanese → all output in Japanese
-  - Other languages follow the same pattern
-  - **Do NOT** mix two languages in one response unless the user explicitly requests bilingual output
-  - Language is determined by the user's **latest message**, not conversation history
-  - Even though SKILL.md examples are in English, actual output must be translated to the user's language
-- **NSFW rejection language**: When triggering content policy rejection, the rejection message must also be in the same language as the user's input.
-
-
+Look up returned `error_code` in the Task Failure Error Codes section of [api_reference.md](../references/api_reference.md) only on failure. Translate the matching explanation; if unavailable, use a brief generic failure message. Explain that failed tasks do not deduct credits. For code 2002, describe the sensitive-content review notice and open https://www.lumeflow.ai/app/mycreations/ so the user can check it.

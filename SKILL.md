@@ -10,54 +10,24 @@ agent_keys:
   - lumeflow-default
 ---
 
-
 # Lumeflow Generation
 
-Generate videos and images via the Lumeflow API. Includes built-in login authentication.
+Generate video/image tasks through the Lumeflow API, with upload and browser login support.
 
-- **Video**: text-to-video (prompt only) and image-to-video (prompt + image URL)
-- **Image**: text-to-image (prompt only) and image-to-image (prompt + image URLs)
-- **Upload**: when the user provides a local image, video, or audio file (not a URL), it is automatically uploaded first in Step 0 to obtain a remote URL before any other processing. Also handles `media://` platform URIs. See [capabilities/upload.md](capabilities/upload.md) for formats and commands.
-- **Login**: browser-based login to obtain `api_key` (auto-triggered when missing)
+## Start here
 
----
+For generation, read [workflow](capabilities/workflow.md) and [output rules](capabilities/rules.md) once per conversation; reuse them unless they change. Then read only [video](capabilities/video.md) or [image](capabilities/image.md) for the requested media type. Prepare inputs, query price, show parameters/time/cost, obtain one explicit quote confirmation, then submit and watch using the same request file.
 
-## 🚨 CRITICAL — Login Pre-Check (before any generation)
+Use `--action watch-video` / `--action watch-image`; submit-only `video` / `image` actions leave tasks unresolved. Missing credentials or 401/403 trigger foreground `scripts/login.py`; see workflow for recovery. Never expose API keys or private config.
 
-Before any generation request, if `LUMEFLOW_API_KEY` is missing or returns 401/403, **immediately run**:
+## Load only when needed
 
-```bash
-python <skill_path>/scripts/login.py
-```
+- Local attachments or `media://` inputs: [upload](capabilities/upload.md); upload before request construction or price queries.
+- Parameter summary: [parameter flow](capabilities/parameter-flow.md).
+- Body construction: locate only the relevant mode in [request templates](capabilities/request-templates.md). Preserve the full prompt.
+- Seedance 2.0 family (73/71/86/87/150; legacy 76 maps to 71): [Seedance](capabilities/seedance.md).
+- Watch timeout, missing result URL or failure: [result handling](capabilities/result-handling.md).
+- Model details: use filtered local catalog commands from video/image modules. Read only the selected model section of [video catalog](references/video-model-catalog.md) or [image catalog](references/image-model-catalog.md) if the command leaves a question unanswered. Full catalogs are needed only for model comparisons.
+- Failure codes: relevant table in [API reference](references/api_reference.md), only on failure.
 
-The script handles everything: generates login_key → opens browser → polls for api_key → persists it.
-- stderr: outputs login URL (forward to user) and polling progress
-- stdout: returns `{"status":"success","api_key":"sk-sp-..."}`
-
-> **FORBIDDEN**: running in background, splitting into separate steps, asking user to confirm login manually.
-
----
-
-## 🚨 CRITICAL — Generation Command Rule
-
-When submitting a generation request (Step 3 of the workflow), you **MUST** use:
-- `--action watch-video` for video generation
-- `--action watch-image` for image generation
-
-**FORBIDDEN**: `--action video` and `--action image` are deprecated and MUST NOT be used.
-
----
-
-This skill has been split into capability modules. **You MUST read the relevant module files before proceeding:**
-
-## Core Rules (Read these first)
-- [Workflow](capabilities/workflow.md) - The mandatory step-by-step process (Upload -> Price -> Generate+Watch -> Done).
-- [Output Format & Interaction](capabilities/rules.md) - Output format rules and interaction guidelines.
-
-## Capabilities (Read based on user request)
-- [Video Generation](capabilities/video.md) - Models, parameters, constraints for video generation.
-- [Image Generation](capabilities/image.md) - Models, parameters for image generation.
-- [Request Templates](capabilities/request-templates.md) - Request body JSON templates and prompt integrity rules.
-- [Result Handling](capabilities/result-handling.md) - Watch responses, result presentation, and retry logic.
-- [Parameter Flow](capabilities/parameter-flow.md) - Parameter collection flow and summary table examples.
-- [File Upload](capabilities/upload.md) - Image/video/audio upload formats, commands, and `media://` resolution.
+Avoid loading unrelated modes, full catalogs, historical task lists, debug logs or implementation source for ordinary generation. Keep full requests and poll diagnostics in files; return compact results to the conversation.

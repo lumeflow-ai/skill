@@ -49,23 +49,33 @@ Agent 会在生成前自动展示参数摘要和预估积分消耗，确认后�
 
 ### 视频模型
 
+Current catalog: [33 supported video models and parameter rules](references/video-model-catalog.md). Inspect locally with `python scripts/generate.py --action models`.
+
 | 模型 | 版本 | 时长 | 分辨率 |
 |------|------|------|--------|
-| Kling | 1.6 / 2.5 / 2.6 / 3.0 / O1 | 5-10s | 720P / 1080P |
-| Pixverse | V4.5 / V5 / V5.5 / C1 | 5-8s | 720P / 1080P |
-| Hailuo | 02 / 2.3 | 6s | 1080P |
-| Google Veo | 3.1 | 8s | 1080P |
-| Wan | 2.5 / 2.6 / 2.7 | 5-10s | 720P / 1080P |
-| Seedance | 2.0 | 5-10s | 720P / 1080P |
-| Vidu | Q1 / Q2 | 4-8s | 720P / 1080P |
+| Kling | 1.6 / 2.5 / 3.0 | 5/10s; 3.0: 3-15s | 3.0: 720P / 1080P / 4K; others use mode |
+| LumeFlow / Pixverse | pix6 (4.0) / pix5 (3.0) / pix4.5 / V5.5 / C1 | 5/8/10s by version; pix6/C1: 2-15s | 360P / 540P / 720P / 1080P by duration |
+| Hailuo | 02 / 2.3 / 2.3 Fast | 6/10s | 768P; 6s also 1080P |
+| Google Veo | 3.1 / 3.1 Fast | 8s | No resolution parameter |
+| Wan | 2.5 / 2.6 / 2.7 | 2.5: 5/10s; 2.6/2.7: 2-15s | 480P / 720P / 1080P by version |
+| Seedance | 1.5 Pro / 2.0 / Fast / VIP / VIP Fast / Mini / 2.5 | 1.5: 4-12s; 2.0: 4-15s; 2.5: 4-30s | 480P / 720P; 1.5/2.0/VIP also 1080P |
+| Vidu | Q1 / Q2 / Q2 Turbo | Q1: no duration parameter; Q2/Turbo: 5/10s | Q1: no resolution parameter; Q2/Turbo: 540P / 720P / 1080P |
+| Sora | 2 / 2 Pro | 10/15s; Pro also 25s | 2: 720P; Pro: 1080P |
+| Happy Horse | 1.0 / 1.1 | 3-15s | 720P / 1080P |
+| Grok Imagine | 1.5 (image-to-video) | 10/15s | 720P |
+| Gemini Omni | Text / single image | 6/8/10s | 720P / 1080P |
+| MiniMax | H3 | 4-15s | 768P / 2K |
 
 ### 图片模型
 
 | 模型 | 版本 | 分辨率 |
 |------|------|--------|
-| Nano Banana | V1 / V2 / Pro | 1K / 2K |
-| Seedream | 4.0 / 5.0 | 1K / 2K / 3K |
-| GPT Image | 2 | 自动 |
+| Nano Banana | V1 / V2 / Pro | V1: omitted; V2/Pro: 1K / 2K / 4K by mode |
+| Seedream | 4.0 / 5.0 Lite / 5.0 Pro | 4.0: 1K/2K/4K; Lite: 2K/3K; Pro: 1K/2K |
+| Kling O1 Image | Image-to-image (38) | 1K / 2K |
+| GPT Image | 2 / 2.5 Flare / 2.5 Sunburst | 1K / 2K / 4K; selectable quality |
+
+Image rules: [current image catalog](references/image-model-catalog.md). Inspect with `python scripts/generate.py --action image-models`.
 
 ## 项目结构
 
@@ -85,6 +95,8 @@ lumeflow-video/
 │   ├── api_reference.md      # API 端点参考与错误码
 │   └── ai_models_analysis.md # 模型参数深度分析
 └── scripts/
+    ├── image_catalog.py      # Image IDs and request validation
+    ├── model_catalog.py      # Current website model IDs and request validation
     ├── generate.py           # 主入口脚本（生成、查询、上传、余额）
     ├── login.py              # 浏览器登录流程
     ├── sign.py               # API 请求签名（MD5）

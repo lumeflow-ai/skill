@@ -36,6 +36,8 @@ timestamp=1234567890&sign=ABCDEF1234567890ABCDEF1234567890
 
 ### 1. Text-to-Video (POST)
 
+The following tables/examples illustrate model 28. For all current video models, follow [the model catalog](video-model-catalog.md) and [mode-specific templates](../capabilities/request-templates.md); fields are not universal.
+
 **URL**: `/api/lumeflow/video-generate`
 
 | Parameter | Type | Required | Default | Description |
@@ -47,7 +49,7 @@ timestamp=1234567890&sign=ABCDEF1234567890ABCDEF1234567890
 | ratio | string | No | - | Aspect ratio. Model 28 supports: `16:9`, `9:16`, `1:1` |
 | duration | int | No | 5 | Video duration in seconds. Model 28 supports: `5`, `8`, `10` |
 | resolution | string | No | - | Resolution. Model 28 supports: `360P`, `540P`, `720P`, `1080P` |
-| motion_mode | string | No | "2" | Motion intensity. `0`=none, `1`=slight, `2`=medium, `3`=strong |
+| motion_mode | string | No | "2" | Internal Fe mode default; where selectable, `1`=standard, `2`=professional. Omitted by many other model classes |
 | outputs | int | No | 1 | Number of videos to generate (max 4) |
 
 **Example Request Body**:
@@ -120,6 +122,8 @@ Use this endpoint to check if video generation is complete and retrieve the resu
 ---
 
 ## Image Endpoints
+
+Image IDs and conditional fields follow [the current image catalog](image-model-catalog.md). Examples below use Nano Banana V2 (72). GPT Image 2/2.5 use resolution=1K/2K/4K and moition_range=2/3/4 for quality. Seedream Lite (80) supports 2K/3K and optional is_web_search; Pro (165) supports 1K/2K. Image Kling O1 is 38 and accepts only image-to-image.
 
 ### 4. Text-to-Image (POST)
 
